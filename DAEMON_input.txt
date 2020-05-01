@@ -1,0 +1,3 @@
+/bin/ps aux
+/bin/pwd -P
+/bin/ls --almost-all
