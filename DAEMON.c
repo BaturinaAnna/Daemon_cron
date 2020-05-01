@@ -135,13 +135,6 @@ void Daemon(char **argv)
 					 }			
 					 
 					 write(daemon_info_file, "DAEMON: exec command\n", 22);
-					 if(execve(sep_command, args, NULL) == -1)
-					 {
-						 syslog(LOG_INFO, "ERROR: can't exec");
-						 write(daemon_info_file, "ERROR: can't exec\n", 19);
-						 signal_terminate = 1;
-						 break; //to end Daemon's work because of error
-					 }					 		 
 					 if(sem_post(&semaphore) == -1)
 					 {
 						syslog(LOG_INFO, "ERROR: can't unlock the semaphore");
@@ -149,7 +142,13 @@ void Daemon(char **argv)
 						signal_terminate = 1;
 						break; //to end Daemon's work because of error
 					 }
-				
+					 if(execve(sep_command, args, NULL) == -1)
+					 {
+						 syslog(LOG_INFO, "ERROR: can't exec");
+						 write(daemon_info_file, "ERROR: can't exec\n", 19);
+						 signal_terminate = 1;
+						 break; //to end Daemon's work because of error
+					 }		 		 				 
 				 }				 	
 			}
 			write(daemon_file_output, "----------\n", 12);
