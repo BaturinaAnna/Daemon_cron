@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <semaphore.h>
+#include <sys/wait.h>
 
 #define MAX_LEN 1000
 #define MAX_COMS 100
@@ -18,6 +19,7 @@
 
 _Bool signal_interrupt = 0;
 _Bool signal_terminate = 0;
+_Bool signal_child = 0;
 
 sem_t semaphore;
 
@@ -29,6 +31,11 @@ void sigint_handler()
 void sigterm_handler()
 {
 	signal_terminate = 1;
+}
+
+void sigchld_handler()
+{
+	signal_child = 1;
 }
 
 void Daemon(char **argv)
@@ -43,6 +50,7 @@ void Daemon(char **argv)
 	
 	signal(SIGINT, sigint_handler);
 	signal(SIGTERM, sigterm_handler);
+	signal(SIGCHLD, sigchld_handler);
 
 	if(sem_init(&semaphore, 0, 1) == -1)
 	{
@@ -135,13 +143,6 @@ void Daemon(char **argv)
 					 }			
 					 
 					 write(daemon_info_file, "DAEMON: exec command\n", 22);
-					 if(sem_post(&semaphore) == -1)
-					 {
-						syslog(LOG_INFO, "ERROR: can't unlock the semaphore");
-						write(daemon_info_file, "ERROR: can't unlock the semaphore\n", 34);
-						signal_terminate = 1;
-						break; //to end Daemon's work because of error
-					 }
 					 if(execve(sep_command, args, NULL) == -1)
 					 {
 						 syslog(LOG_INFO, "ERROR: can't exec");
@@ -149,6 +150,33 @@ void Daemon(char **argv)
 						 signal_terminate = 1;
 						 break; //to end Daemon's work because of error
 					 }		 		 				 
+				 }
+				 else
+				 {
+					 while(1)
+					 {
+						 pause();
+						 if (signal_child == 1)
+						 {
+							 signal_child = 0;
+							 int wstatus;
+							 if(wait(&wstatus) == -1)
+							 {
+								 syslog(LOG_INFO, "ERROR: wait error");
+								 write(daemon_info_file, "ERROR: wait error\n", 19);
+								 signal_terminate = 1;
+								 break; //to end Daemon's work because of error
+							 }
+							 if(sem_post(&semaphore) == -1)
+							 {
+								 syslog(LOG_INFO, "ERROR: can't unlock the semaphore");
+								 write(daemon_info_file, "ERROR: can't unlock the semaphore\n", 34);
+								 signal_terminate = 1;
+								 break; //to end Daemon's work because of error
+							 }						 
+							 break;
+						 }
+					 }
 				 }				 	
 			}
 			write(daemon_file_output, "----------\n", 12);
