@@ -1,2 +1,2 @@
 # Daemon_cron
-Демон, который должен получить команды из файла, указанного в командной строке при запуске, выполнить их в параллельных поцессах, и записать их результат в другой файл
+A daemon that should receive commands from the file specified in the command line at startup, execute them in parallel processes, and write their result to another file 
